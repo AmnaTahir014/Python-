@@ -1,0 +1,371 @@
+import pyaudio
+import os
+import struct
+import numpy as np
+import matplotlib.pyplot as plt
+import time
+from tkinter import TclError
+# use this backend to display in separate Tk window
+# constants
+CHUNK = 1024 * 2             # samples per frame
+FORMAT = pyaudio.paInt16     # audio format (bytes per sample?)
+CHANNELS = 1                 # single channel for microphone
+RATE = 44100                 # samples per second
+# create matplotlib figure and axes
+fig, ax = plt.subplots(1, figsize=(15, 7))
+# pyaudio class instance
+p = pyaudio.PyAudio()
+# get list of availble inputs
+info = p.get_host_api_info_by_index(0)
+numdevices = info.get('deviceCount')
+for i in range(0, numdevices):
+        if (p.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
+            print ("Input Device id ", i, " - ", p.get_device_info_by_host_api_device_index(0, i).get('name'))
+# select input
+audio_input = input("\n\nSelect input by Device id: ")
+# stream object to get data from microphone
+stream = p.open(
+    input_device_index=int(audio_input),
+    format=FORMAT,
+    channels=CHANNELS,
+    rate=RATE,
+    input=True,
+    output=True,
+    frames_per_buffer=CHUNK
+)
+# variable for plotting
+x = np.arange(0, 2 * CHUNK, 2)
+# create a line object with random data
+line, = ax.plot(x, np.random.rand(CHUNK), '-', lw=2)
+# basic formatting for the axes
+ax.set_title('AUDIO WAVEFORM')
+ax.set_xlabel('samples')
+ax.set_ylabel('volume')
+ax.set_ylim(0, 255)
+ax.set_xlim(0, 2 * CHUNK)
+plt.setp(ax, xticks=[0, CHUNK, 2 * CHUNK], yticks=[0, 128, 255])
+# show the plot
+plt.show(block=False)
+print('stream started')
+# for measuring frame rate
+frame_count = 0
+start_time = time.time()
+while True:
+    # binary data
+    data = stream.read(CHUNK)
+    # convert data to integers, make np array, then offset it by 127
+    data_int = struct.unpack(str(2 * CHUNK) + 'B', data)
+    # create np array and offset by 128
+    data_np = np.array(data_int, dtype='b')[::2] + 128
+    line.set_ydata(data_np)
+    # update figure canvas
+    try:
+        fig.canvas.draw()
+        fig.canvas.flush_events()
+        frame_count += 1
+    except TclError:
+        # calculate average frame rate
+        frame_rate = frame_count / (time.time() - start_time)
+        print('stream stopped')
+        print('average frame rate = {:.0f} FPS'.format(frame_rate))
+        break
+from tkinter import *
+from tkinter.colorchooser import askcolor
+class Paint(object):
+    pen_size = 5.0
+    color = 'black'
+    def __init__(self):
+        self.root = Tk()
+        self.pen_button = Button(self.root, text = 'pen', command = self.use_pen)
+        self.pen_button.grid(row = 0, column = 0)
+        self.brush_button = Button(self.root, text = 'brush', command = self.use_brush)
+        self.brush_button.grid(row=0, column=1)
+        self.color_button = Button(self.root, text='color', command=self.choose_color)
+        self.color_button.grid(row=0, column=2)
+        self.eraser_button = Button(self.root, text='eraser', command=self.use_eraser)
+        self.eraser_button.grid(row=0, column=3)
+        self.choose_size_button = Scale(self.root, from_=1, to=10, orient=HORIZONTAL)
+        self.choose_size_button.grid(row=0, column=4)
+        self.c=Canvas(self.root, bg='white', width=600, height=600)
+        self.c.grid(row=1, columnspan=5)
+        self.setup()
+        self.root.mainloop()
+    def setup(self):
+        self.old_x = None
+        self.old_y = None
+        self.line_width = self.choose_size_button.get()
+        self.color = self.color
+        self.eraser_on = False
+        self.active_button = self.pen_button
+        self.c.bind('<B1-Motion>', self.print)
+        self.c.bind('<ButtonRelease-1>', self.reset)
+    def use_pen(self):
+        self.activate_button(self.pen_button)
+    def use_brush(self):
+        self.activate_button(self.brush_button)
+    def choose_color(self):
+        self.eraser_on = False
+        self.color = askcolor(color=self.color)[1]
+    def use_eraser(self):
+        self.activate_button(self.eraser_button, eraser_mode=True)
+    def activate_button(self, some_button, eraser_mode=False):
+        self.activate_button.config(relief=RAISED)
+        some_button.config(relief=SUNKEN)
+        self.active_button = some_button
+        self.eraser_on = eraser_mode
+    def print(self, event):
+        self.line_width = self.choose_size_button.get()
+        paint_color = 'white' if self.eraser_on else self.color
+        if self.old_x and self.old_y:
+            self.c.create_line(self.old_x, self.old_y, event.x, event.y, width=self.line_width, fill=paint_color, capstyle=ROUND, smooth=TRUE, splinesteps=36)
+            self.old_x = event.x
+            self.old_y = event.y
+    def reset(self, event):
+        self.old_x, self.old_y = None, None
+if __name__ =='__main__':
+        Paint()
+from tkinter import *
+import random
+import string
+root = Tk()
+root.geometry("400x200")
+passstr = StringVar()
+pwd_len = IntVar()
+# function to generate the password
+def get_pass():
+    pass1 = string.ascii_letters + string.digits + string.punctuation
+    password = ""
+    for x in range(pwd_len.get()): #loop to generate the user given length for password
+        password = password + random.choice(pass1)
+    passstr.set(password)
+#tkinter command to generate the gui    
+Label(root, text="Password Generator", font="calibri 18 bold").pack()
+Label(root, text="Enter length of Password").pack(pady=9)
+Entry(root, textvariable=pwd_len).pack(pady=2)
+Button(root, text="Generate Password", command=generate).pack(pady=15)
+Entry(root, textvariable=passstr).pack(pady=2)
+root.mainloop()
+import random
+from tkinter import *
+import string
+from tkinter.font import Font
+def generate_password():
+  password=[]
+  for i in range(2):
+    alpha=random.choice(string.ascii_letters)
+    symbol=random.choice(string.punctuation)
+    numbers=random.choice(string.digits)
+    password.append(alpha)
+    password.append(symbol)
+    password.append(numbers)
+  y="".join(str(x)for x in password)
+  lbl.config(text=y)
+root=Tk()
+root.geometry("250x200")
+btn=Button(root,text="Generate Password",command=generate_password)
+btn.place(relx=0.5, rely=0.2, anchor=N)
+myFont = Font(family="Times New Roman", size=12)
+lbl=Label(root,font=myFont)
+lbl.place(relx=0.5, rely=0.5, anchor=CENTER)
+root.mainloop()
+from tkinter import*
+win = Tk()
+win.title("LoopGlitch Screenshoter")
+def callback():
+    mySS = pyautogui.screenshot()
+    mySS.save(r'E:\PyCharm\mySSpy.jpg')  #r'Path to save the screenshot\file name.png or jpg'
+button = Button(win, text = "Screenshot This !", command = callback)
+button.grid(row = 50, column = 50)
+win.mainloop()
+from tkinter import *
+import wikipedia
+def get_data():
+    entry_value = entry.get()
+    answer.delete(1.0, END)
+    try:
+        answer_value = wikipedia.summary(entry_value)
+        answer.insert(INSERT, answer_value)
+    except:
+        answer.insert(INSERT, "ERROR! Invalid input or poor internet connection")
+win = Tk()
+win.title("Wikipedia Search")
+topframe = Frame(win)
+entry = Entry(topframe)
+entry.pack()
+button = Button(topframe, text="search", command=get_data)
+button.pack()
+topframe.pack(side = TOP)
+bottomframe = Frame(win)
+scroll = Scrollbar(bottomframe)
+scroll.pack(side=RIGHT, fill=Y)
+answer =  Text(bottomframe, width=50, height=20, yscrollcommand = scroll.set, wrap=WORD)
+scroll.config(command=answer.yview)
+answer.pack()
+bottomframe.pack()
+win.mainloop()
+from tkinter import *
+import calendar
+win = Tk()
+win.title("GUI Calendar")
+def text():
+    year_str = year.get()
+    month_str = month.get()
+    year_int = int(year_str)
+    month_int = int (month_str)
+    cal = calendar.month(year_int, month_int)
+    textfield.delete(0.0, END)
+    textfield.insert(INSERT, cal)
+label1 = Label(win, text = '{Year} ')
+label1.grid(row = 0, column = 0)
+label1 = Label(win, text = '{Month} ')
+label1.grid(row = 0, column = 1)
+year = Spinbox(win, from_= 1947, to = 2150, width = 24)
+year.grid(row = 1, column = 0, padx = 16)
+month = Spinbox(win, from_= 1, to = 12, width = 3)
+month.grid(row = 1, column = 1)
+button = Button(win, text = "{GO}", command = text)
+button.grid(row = 1, column = 2)
+textfield = Text(win, height = 10, width = 30, foreground = 'brown')
+textfield.grid(row = 3, columnspan = 3)
+win.mainloop()
+from win10toast import ToastNotifier
+import time
+while True:
+  current_time = time.strftime("%H:%M:%S")
+  if current_time=="00.36.00":
+    print(current_time)
+    break
+  else:
+    pass
+hr=ToastNotifier()
+hr.show_toast("alarm","this is the message")
+from PyPDF2 import PdfFileWriter, PdfFileReader
+import getpass
+# Making an instance of the PdfFileWriter class and storing it in a variable
+writer = PdfFileWriter()
+# Explicitly ask the user what the name of the original file is
+pdf_name = input('Pleast type in the name of the pdf file suffixed with its extention: ')
+# Making an instance of the PdfFileReader class with the original file as an argument
+original_file = PdfFileReader(pdf_name)
+# Copies the content of the original file to the writer variable
+for page in range(original_file.numPages):
+    writer.addPage(original_file.getPage(page))
+# Retrieve a preferred password from the user 
+password = getpass.getpass(prompt = "Set a Password: ")
+# Encrypt the copy of the original file
+writer.encrypt(password)
+# Opens a new pdf (write brinary permission) and writes the content of the 'writer' into it
+with open('secured.pdf', 'wb') as f:
+    writer.write(f)
+    f.close()
+from datetime import datetime
+from playsound import playsound
+import winsound
+#input the time in HH:MM where HH is  hour and MM is minutes in 12 hour format
+alarm_date=input('Enter the date on which you want to set the alarm: ').strip()
+alarm_time=''.join(input("Enter the time of alarm to be set in HH:MM,AM/PM format: ").split())
+music_or_beep = input("Enter m for a music or b for beep sound: ")
+if music_or_beep=='b':
+    dur=int(input("duration in seconds: "))*1000 #winsound takes in milliseconds
+    freq = int(input("frequency of the noise: ")) #optimal- 500
+alarm_hour=alarm_time[0:2]
+alarm_minute=alarm_time[3:5]
+alarm_period=alarm_time[6:8].upper()
+print('setting alarm.....')
+while True:
+    current_time=datetime.now()
+    current_hour=current_time.strftime('%I')
+    current_minute=current_time.strftime('%M')
+    current_period=current_time.strftime('%p')
+    current_date=current_time.strftime('%d')
+    if current_date==alarm_date and current_period==alarm_period and current_hour==alarm_hour and current_minute==alarm_minute:
+        print('*'*10)
+        print('| '+'Wake up!'+' |')
+        print('*'*10)
+        if music_or_beep=='m':
+            playsound('audio.wav')
+        else:
+            winsound.Beep(freq,dur)
+        break
+import pyttsx3
+book=open(r"book.txt")
+book_text=book.readlines()
+engine = pyttsx3.init()
+for i in book_text:
+    engine.say(i)
+    engine.runAndWait()
+import datetime
+current_date = datetime.date.today().strftime('%Y-%m-%d')
+current_date_lst = current_date.split('-')
+bday_log = [
+   ('Ayushi', ('1999', '10', '19')),
+   ('Yash', ('1999', '04', '21')),
+]
+add = input('To add birthday type y:').strip().lower()
+if add[:1] == 'y':
+   new = input('Add birthday in format yyyy-mm-dd:')
+   # print(new_lst)
+   name = input('Whose bday?')
+   date = new.split( '-' )
+   bday_log.append((name, tuple(date)))
+for birthday in bday_log:
+   # current_dat[1] == birthday[1][1] this will check if current month is same as birth month  and current date is same as
+   # birth date as per preadded log
+   if current_date_lst[1] == birthday[1][1] and current_date_lst[2] == birthday[1][2]:
+       age = int(current_date_lst[0]) - int(birthday[1][0])
+       ordinal_suffix = {1: 'st', 2: 'nd', 3: 'rd', 11: 'th', 12: 'th', 13: 'th'}.get(age % 10 if not 10 < age <= 13 else age % 14, 'th')
+       print(f" It's {birthday[0]}'s {age}{ordinal_suffix} Birthday")
+import moviepy
+import moviepy.editor
+# Get this library installed in your system
+# Import your video file
+# Media file should be local
+video = moviepy.editor.VideoFileClip("")    # Put your file path in here
+# Convert video to audio
+audio = video.audio
+audio.write_audiofile('new_audio.mp3')
+import pyshorteners
+link = input("enter the link:") #variable
+shortener = pyshorteners.Shortener() #class object
+x = shortener.tinyurl.short(link) #shorting the link
+print(x)
+from PyPDF2 import PdfFileMerger
+import os 
+#var = os.getcwd() For extracting from enother folder
+merger = PdfFileMerger()
+for items in os.listdir():
+  if items.endswith('.pdf'):
+    merger.append(items)
+merger.write("Final_pdf.pdf")
+merger = PdfFileMerger()
+with open(originalFile, 'rb') as fin:
+    merger.append(PdfFileReader(fin))
+os.remove(originalFile)
+merger.close()
+import pyautogui
+# A infinite loop
+while 1>0:
+    # makes the mouse sleep or wait for 40 seconds
+    pyautogui.sleep(40)
+    # clicks about in the corner of the screen like
+    # on the co-ordinates of (50,400)
+    pyautogui.click(50,400)
+from PyPDF2 import PdfFileWriter, PdfFileReader
+import getpass
+pdfwriter=PdfFileWriter()
+pdf=PdfFileReader("1.pdf")
+for page_num in range(pdf.numPages):
+  pdfwriter.addPage(pdf.getPage(page_num))
+passw=getpass.getpass(prompt='Enter Password: ')
+pdfwriter.encrypt(passw)
+with open('ho.pdf','wb') as f:
+  pdfwriter.write(f)
+import sounddevice
+from scipy.io.wavfile import write
+fs=44100 #sample_rate
+second=int(input("Enter the time duration in second: ")) #enter your required time..
+print("Recording....\n")
+record_voice=sounddevice.rec(int(second * fs),samplerate=fs,channels=2)
+sounddevice.wait()
+write("out.wav",fs,record_voice)
+print("Finished...\nPlease Check it...")
